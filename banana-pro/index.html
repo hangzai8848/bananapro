@@ -1,0 +1,1385 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini 3 Pro - v8 旗舰工作台</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+    <style>
+        /* --- 1. 基础布局 --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f8;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 左侧主操作区 */
+        .main-panel {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* 右侧历史记录栏 */
+        .history-panel {
+            width: 280px;
+            background: #fff;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+
+        .history-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            color: #1a73e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .history-item {
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .history-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-item.active {
+            border-color: #1a73e8;
+        }
+
+        .history-thumb {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+            background: #f0f0f0;
+        }
+
+        .history-info {
+            padding: 8px;
+            font-size: 12px;
+            color: #666;
+            background: #fafafa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        h1 {
+            color: #1a73e8;
+            text-align: center;
+            margin: 0 0 5px 0;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        /* --- 2. 输入控件 --- */
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .input-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #444;
+            margin: 0;
+        }
+
+        input[type="password"],
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #1a73e8;
+            outline: none;
+        }
+
+        .text-btn {
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 5px;
+            text-decoration: underline;
+        }
+
+        .text-btn:hover {
+            color: #d93025;
+        }
+
+        .text-btn.blue:hover {
+            color: #1a73e8;
+        }
+
+        /* 密码可见性切换按钮 */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #666;
+            padding: 5px;
+        }
+
+        .toggle-password:hover {
+            color: #1a73e8;
+        }
+
+        /* --- 额度显示区域 (已优化) --- */
+        .usage-stats {
+            margin-top: 12px;
+            font-size: 13px;
+            color: #444;
+            display: none;
+            background: #f1f8ff;
+            /* 浅蓝色背景 */
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #cce5ff;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .usage-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            border-bottom: 1px dashed #dae0e5;
+            padding-bottom: 4px;
+        }
+
+        .usage-item:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .usage-label {
+            color: #666;
+        }
+
+        .usage-value {
+            font-weight: 600;
+            color: #333;
+            font-family: "SF Mono", Consolas, monospace;
+        }
+
+        .usage-value.highlight {
+            color: #1a73e8;
+        }
+
+
+        /* --- 3. 图片上传槽位 --- */
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .upload-slot {
+            text-align: center;
+            position: relative;
+        }
+
+        .slot-box {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #fafafa;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .slot-box:hover {
+            border-color: #1a73e8;
+            background: #f0f7ff;
+        }
+
+        .slot-placeholder {
+            color: #999;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .slot-preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 68, 68, 0.9);
+            color: white;
+            font-size: 14px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+        }
+
+        .upload-slot.has-image .delete-btn {
+            display: block;
+        }
+
+        .upload-slot.has-image .slot-box {
+            border-style: solid;
+            border-color: #1a73e8;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+
+        /* --- 4. 按钮与设置 --- */
+        .settings-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .settings-row .input-group {
+            flex: 1;
+        }
+
+        button#generateBtn {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2);
+        }
+
+        button#generateBtn:hover {
+            background-color: #1557b0;
+            transform: translateY(-1px);
+        }
+
+        button#generateBtn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* --- 5. 结果区域 --- */
+        #result-area {
+            margin-top: 25px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+
+        .result-wrapper {
+            display: inline-block;
+            position: relative;
+        }
+
+        .result-img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            cursor: zoom-in;
+        }
+
+        .time-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            display: none;
+        }
+
+        .action-bar {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.2s;
+            border: none;
+        }
+
+        .btn-secondary:hover {
+            background: #e8eaed;
+        }
+
+        .btn-download {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #1557b0;
+        }
+
+        /* --- 6. Toast 提示 --- */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px;
+            position: fixed;
+            z-index: 3000;
+            left: 50%;
+            top: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s, top 0.3s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            top: 50px;
+        }
+
+        /* --- 7. Lightbox --- */
+        #lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 10, 0.95);
+            z-index: 2000;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .lb-close {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            z-index: 2002;
+            opacity: 0.7;
+        }
+
+        .lb-close:hover {
+            opacity: 1;
+        }
+
+        .lb-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .transform-target {
+            cursor: grab;
+            transform-origin: center center;
+            transition: transform 0.05s linear;
+            max-height: 90vh;
+            max-width: 90vw;
+            pointer-events: auto;
+        }
+
+        .transform-target.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+
+        .stitch-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+            gap: 5px;
+            padding: 0 50px;
+        }
+
+        .stitch-item {
+            height: 100%;
+            width: auto;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .stitch-result {
+            border: 2px solid #1a73e8;
+        }
+
+        .stitch-separator {
+            color: #555;
+            font-size: 30px;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        .zoom-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            pointer-events: none;
+        }
+        /* --- 8. 日志面板 --- */
+        #log-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            background: #1e1e1e;
+            border-top: 2px solid #333;
+            display: none;
+            flex-direction: column;
+            z-index: 3000;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        #log-panel.show {
+            display: flex;
+        }
+
+        .log-header {
+            background: #252526;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-title {
+            color: #fff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .log-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-btn {
+            background: #3c3c3c;
+            color: #fff;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .log-btn:hover {
+            background: #505050;
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            color: #d4d4d4;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            word-break: break-all;
+        }
+
+        .log-entry.log {
+            color: #d4d4d4;
+        }
+
+        .log-entry.info {
+            color: #4fc3f7;
+        }
+
+        .log-entry.warn {
+            color: #ffb74d;
+            background: rgba(255, 183, 77, 0.1);
+        }
+
+        .log-entry.error {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+            font-weight: bold;
+        }
+
+        .log-timestamp {
+            color: #858585;
+            margin-right: 8px;
+        }
+
+        .log-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(26, 115, 232, 0.4);
+            transition: all 0.2s;
+            z-index: 2999;
+        }
+
+        .log-toggle-btn:hover {
+            background: #1557b0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(26, 115, 232, 0.5);
+        }
+
+
+        /* 响应式调整 */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow: auto;
+            }
+
+            .history-panel {
+                width: 100%;
+                height: auto;
+                border-left: none;
+                border-top: 1px solid #ddd;
+                order: 2;
+            }
+
+            .history-list {
+                flex-direction: row;
+                overflow-x: auto;
+                height: 140px;
+            }
+
+            .history-item {
+                min-width: 120px;
+            }
+
+            .history-thumb {
+                height: 100px;
+            }
+
+            .main-panel {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-panel">
+        <div class="container">
+            <h1>🎨 Gemini 3 Pro 旗舰工作台</h1>
+            <p class="subtitle">历史记录 · 一键复制 · 智能拼接</p>
+
+            <div class="input-group">
+                <div class="input-header">
+                    <label>API 密钥</label>
+                    <div style="display:flex; gap:10px;">
+                        <button class="text-btn" onclick="checkUsage()">📊 查询余额</button>
+                        <button class="text-btn" onclick="clearConfig()">🗑️ 忘记配置</button>
+                    </div>
+                </div>
+                <div class="password-wrapper">
+                    <input type="password" id="apiKey" placeholder="在此粘贴 Key，生成时会自动保存">
+                    <button class="toggle-password" onclick="toggleApiKeyVisibility()" title="显示/隐藏 Key">👁️</button>
+                </div>
+                <div id="usage-stats" class="usage-stats"></div>
+            </div>
+
+            <div class="input-group">
+                <div class="input-header">
+                    <label>参考图片 <span style="font-weight:normal; color:#888; font-size:13px;">(可选，不传即为文生图)</span></label>
+                    <button class="text-btn blue" onclick="clearAllSlots()">🗑️ 清空所有图片</button>
+                </div>
+                <div class="upload-grid">
+    <!-- 日志面板 -->
+    <div id="log-panel">
+        <div class="log-header">
+            <div class="log-title">📋 调试日志</div>
+            <div class="log-controls">
+                <button class="log-btn" onclick="clearLogs()">清空日志</button>
+                <button class="log-btn" onclick="toggleLogPanel()">关闭</button>
+            </div>
+        </div>
+        <div class="log-content" id="log-content"></div>
+    </div>
+
+    <button class="log-toggle-btn" onclick="toggleLogPanel()">📋 查看日志</button>
+
+                    <script>
+                        for (let i = 1; i <= 4; i++) {
+                            document.write(`
+                        <div class="upload-slot" id="slot-${i}">
+                            <div class="delete-btn" onclick="clearSlot(${i}, event)">×</div>
+                            <div class="slot-box" onclick="handleSlotClick(${i})">
+                                <div class="slot-placeholder" id="placeholder-${i}"><span>📷</span>图 ${i}</div>
+                                <img class="slot-preview-img" id="preview-${i}">
+                            </div>
+                            <input type="file" id="input-${i}" class="hidden-file-input" accept="image/*" onchange="handleFileChange(${i}, event)">
+                        </div>`);
+                        }
+                    </script>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label style="margin-bottom:8px; display:block;">提示词 (Prompt)</label>
+                <textarea id="prompt" placeholder="描述你想要的画面... (例如：一只在太空漫步的猫，赛博朋克风格)"></textarea>
+            </div>
+
+            <div class="settings-row">
+                <div class="input-group">
+                    <label>比例</label>
+                    <select id="aspectRatio">
+                        <option value="">默认</option>
+                        <option value="16:9">16:9</option>
+                        <option value="1:1">1:1</option>
+                        <option value="9:16">9:16</option>
+                        <option value="4:3">4:3</option>
+                        <option value="3:4">3:4</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>分辨率</label>
+                    <select id="resolution">
+                        <option value="1K">1K (快速)</option>
+                        <option value="2K">2K (高清)</option>
+                        <option value="4K" selected>4K (超清)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="generateBtn" onclick="generateImage()">🚀 保存配置并生成</button>
+
+            <div id="result-area">
+                <div class="result-wrapper">
+                    <img id="final-image" class="result-img" onclick="openLightbox('compare')">
+                    <div id="execution-time" class="time-badge"></div>
+                </div>
+                <div class="action-bar">
+                    <button id="compareBtn" class="btn-secondary" onclick="openLightbox('compare')">🔍 全屏查看</button>
+                    <button class="btn-secondary" onclick="copyToClipboard()">📋 复制图片</button>
+                    <a id="download-link" class="btn-secondary btn-download" download>📥 下载原图</a>
+                </div>
+                <div id="text-output"
+                    style="margin-top:15px; text-align:left; background:#f9f9f9; padding:10px; display:none; border-radius:8px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-panel">
+        <div class="history-header">
+            <span>🕒 生成历史 (Session)</span>
+            <button class="text-btn" onclick="clearHistory()">清空</button>
+        </div>
+        <div class="history-list" id="history-list">
+            <div style="text-align:center; color:#999; margin-top:20px; font-size:13px;">暂无历史记录<br>生成的图片会暂存在这里</div>
+        </div>
+    </div>
+
+    <div id="toast">提示信息</div>
+
+    <div id="lightbox" onmousedown="startDrag(event)" onmousemove="doDrag(event)" onmouseup="endDrag(event)"
+        onmouseleave="endDrag(event)" onwheel="handleZoom(event)">
+        <div class="lb-close" onclick="closeLightbox()">×</div>
+        <div class="lb-content" id="lb-content"></div>
+        <div class="zoom-hint">💡 滚轮缩放 · 左键拖拽</div>
+    </div>
+    <!-- 日志面板 -->
+    <div id="log-panel">
+        <div class="log-header">
+            <div class="log-title">📋 调试日志</div>
+            <div class="log-controls">
+                <button class="log-btn" onclick="clearLogs()">清空日志</button>
+                <button class="log-btn" onclick="toggleLogPanel()">关闭</button>
+            </div>
+        </div>
+        <div class="log-content" id="log-content"></div>
+    </div>
+
+    <button class="log-toggle-btn" onclick="toggleLogPanel()">📋 查看日志</button>
+
+
+    <script>        // --- 日志系统 ---
+        const Logger = {
+            logs: [],
+            maxLogs: 200,
+
+            init() {
+                // 劫持console方法
+                const originalLog = console.log;
+                const originalWarn = console.warn;
+                const originalError = console.error;
+
+                console.log = (...args) => {
+                    originalLog.apply(console, args);
+                    this.add('log', ...args);
+                };
+
+                console.warn = (...args) => {
+                    originalWarn.apply(console, args);
+                    this.add('warn', ...args);
+                };
+
+                console.error = (...args) => {
+                    originalError.apply(console, args);
+                    this.add('error', ...args);
+                };
+
+                // 全局错误捕获
+                window.onerror = (message, source, lineno, colno, error) => {
+                    this.add('error', `❌ 未捕获错误: ${message}`, `位置: ${source}:${lineno}:${colno}`, error?.stack || '');
+                    return false;
+                };
+
+                window.onunhandledrejection = (event) => {
+                    this.add('error', '❌ 未处理的Promise拒绝:', event.reason);
+                };
+
+                this.add('info', '✅ 日志系统已启动');
+            },
+
+            add(type, ...messages) {
+                const timestamp = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+                const message = messages.map(m => {
+                    if (typeof m === 'object') {
+                        try { return JSON.stringify(m, null, 2); }
+                        catch { return String(m); }
+                    }
+                    return String(m);
+                }).join(' ');
+
+                this.logs.push({ type, timestamp, message });
+                if (this.logs.length > this.maxLogs) {
+                    this.logs.shift();
+                }
+
+                this.render();
+            },
+
+            render() {
+                const content = document.getElementById('log-content');
+                if (!content) return;
+
+                content.innerHTML = this.logs.map(log => `
+                    <div class="log-entry ${log.type}">
+                        <span class="log-timestamp">[${log.timestamp}]</span>
+                        <span>${this.escapeHtml(log.message)}</span>
+                    </div>
+                `).join('');
+
+                // 自动滚动到底部
+                content.scrollTop = content.scrollHeight;
+            },
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            },
+
+            clear() {
+                this.logs = [];
+                this.render();
+                this.add('info', '🗑️ 日志已清空');
+            }
+        };
+
+        function toggleLogPanel() {
+            const panel = document.getElementById('log-panel');
+            panel.classList.toggle('show');
+        }
+
+        function clearLogs() {
+            Logger.clear();
+        }
+
+        // 初始化日志系统
+        Logger.init();
+
+
+        // --- 全局状态 ---
+        let fileSlots = [null, null, null, null];
+        let generatedBase64 = null;
+        let viewState = { scale: 1, pX: 0, pY: 0, isDragging: false, startX: 0, startY: 0 };
+        let historyData = []; // 存储历史记录对象 {id, base64, prompt, date, duration}
+        const DEFAULT_API_KEY = '';
+
+        function formatDuration(ms) {
+            const s = Math.round(ms / 1000);
+            if (s < 60) return `${s}s`;
+            return `${Math.floor(s / 60)}分${s % 60}s`;
+        }
+
+        // --- Toast 提示 ---
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // --- 配置保存读取 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const k = localStorage.getItem('gemini_api_key');
+            const r = localStorage.getItem('gemini_resolution');
+            const a = localStorage.getItem('gemini_ratio');
+            // Use local storage key if exists, otherwise default
+            document.getElementById('apiKey').value = k || DEFAULT_API_KEY;
+            if (r) document.getElementById('resolution').value = r;
+            if (a) document.getElementById('aspectRatio').value = a;
+        });
+
+        function saveConfig() {
+            localStorage.setItem('gemini_api_key', document.getElementById('apiKey').value.trim());
+            localStorage.setItem('gemini_resolution', document.getElementById('resolution').value);
+            localStorage.setItem('gemini_ratio', document.getElementById('aspectRatio').value);
+        }
+
+        function clearConfig() {
+            if (confirm('确定清除本地保存的配置吗？')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function toggleApiKeyVisibility() {
+            const input = document.getElementById('apiKey');
+            const btn = document.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerText = '🙈';
+            } else {
+                input.type = 'password';
+                btn.innerText = '👁️';
+            }
+        }
+
+        // --- 核心更新: 查询额度函数 (含汇率转换) ---
+        async function checkUsage() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) { showToast('⚠️ 请先输入 API Key'); return; }
+
+            const statsDiv = document.getElementById('usage-stats');
+            statsDiv.style.display = 'block';
+            statsDiv.innerHTML = '<div style="text-align:center; color:#666;">⏳ 正在查询令牌详情...</div>';
+
+            try {
+                // 使用 CORS 代理以确保本地文件可以访问 API
+                const proxyUrl = 'https://corsproxy.io/?';
+                const targetUrl = 'https://api3.wowapi.cc/api/usage/token';
+
+                const resp = await fetch(proxyUrl + targetUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+
+                const json = await resp.json();
+
+                // 解析逻辑：检查 code 或 success 字段
+                if (json.code === true || json.success === true) {
+                    const d = json.data;
+                    
+                    // --- 💰 汇率控制 💰 ---
+                    // 250,000 积分显示为 1 元 (实现 0.2元/张 的售价)
+                    const EXCHANGE_RATE = 250000; 
+
+                    const displayAvailable = (d.total_available / EXCHANGE_RATE).toFixed(2);
+                    const displayUsed = (d.total_used / EXCHANGE_RATE).toFixed(2);
+                    const displayTotal = (d.total_granted / EXCHANGE_RATE).toFixed(2);
+
+                    // 处理过期时间
+                    let expireStr = '永不过期';
+                    if (d.expires_at > 0) {
+                        const date = new Date(d.expires_at * 1000);
+                        expireStr = date.toLocaleString();
+                    }
+
+                    // 构建显示 HTML
+                    statsDiv.innerHTML = `
+                        <div class="usage-item">
+                            <span class="usage-label">当前套餐</span>
+                            <span class="usage-value">${d.name} (高级版)</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">剩余余额</span>
+                            <span class="usage-value highlight">${d.unlimited_quota ? '♾️ 无限' : '¥ ' + displayAvailable}</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">已消费</span>
+                            <span class="usage-value">¥ ${displayUsed}</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">总额度</span>
+                            <span class="usage-value">${d.unlimited_quota ? '♾️ 无限' : '¥ ' + displayTotal}</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">过期时间</span>
+                            <span class="usage-value" style="font-size:12px">${expireStr}</span>
+                        </div>
+                        <div style="font-size:10px; color:#999; margin-top:5px; text-align:right;">*数据已通过安全代理获取</div>
+                    `;
+                    showToast('✅ 余额查询成功');
+                } else {
+                    throw new Error(json.message || 'Token 无效或查询失败');
+                }
+            } catch (e) {
+                console.error(e);
+                statsDiv.innerHTML = `<span style="color:#d93025; font-size:12px; display:block; text-align:center;">❌ 查询失败: ${e.message}</span>`;
+            }
+        }
+
+        // --- 交互逻辑 ---
+        function handleSlotClick(idx) {
+            if (fileSlots[idx - 1]) openLightbox('single', idx);
+            else document.getElementById(`input-${idx}`).click();
+        }
+
+        function handleFileChange(idx, e) {
+            const f = e.target.files[0];
+            if (f) {
+                fileSlots[idx - 1] = f;
+                const r = new FileReader();
+                r.onload = (ev) => {
+                    const img = document.getElementById(`preview-${idx}`);
+                    img.src = ev.target.result;
+                    img.style.display = 'block';
+                    document.getElementById(`placeholder-${idx}`).style.display = 'none';
+                    document.getElementById(`slot-${idx}`).classList.add('has-image');
+                }
+                r.readAsDataURL(f);
+            }
+        }
+
+        function clearSlot(idx, e) {
+            if (e) e.stopPropagation();
+            fileSlots[idx - 1] = null;
+            document.getElementById(`input-${idx}`).value = '';
+            const img = document.getElementById(`preview-${idx}`);
+            img.src = ''; img.style.display = 'none';
+            document.getElementById(`placeholder-${idx}`).style.display = 'flex';
+            document.getElementById(`slot-${idx}`).classList.remove('has-image');
+        }
+
+        function clearAllSlots() {
+            for (let i = 1; i <= 4; i++) clearSlot(i, null);
+        }
+
+        // --- 历史记录功能 ---
+        function addToHistory(base64, prompt, duration) {
+            const id = Date.now();
+            const item = { id, base64, prompt, time: new Date().toLocaleTimeString(), duration };
+            historyData.unshift(item); // 加到最前
+            if (historyData.length > 10) historyData.pop(); // 限制存10条
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            if (historyData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#999; margin-top:20px; font-size:13px;">暂无历史记录<br>生成的图片会暂存在这里</div>';
+                return;
+            }
+            list.innerHTML = historyData.map(item => `
+            <div class="history-item" onclick="loadFromHistory(${item.id})">
+                <img src="${item.base64}" class="history-thumb">
+                <div class="history-info">${item.time} - ${item.prompt.substring(0, 15)}...</div>
+            </div>
+        `).join('');
+        }
+
+        function loadFromHistory(id) {
+            const item = historyData.find(i => i.id === id);
+            if (item) {
+                generatedBase64 = item.base64;
+                document.getElementById('final-image').src = generatedBase64;
+                document.getElementById('download-link').href = generatedBase64;
+                document.getElementById('download-link').download = `gemini_${item.id}.png`;
+                document.getElementById('result-area').style.display = 'block';
+
+                // 更新按钮状态
+                const hasRefs = fileSlots.some(f => f !== null);
+                document.getElementById('compareBtn').innerText = hasRefs ? '🔍 全屏拼接对比' : '🔍 全屏查看大图';
+
+                // 恢复提示词
+                document.getElementById('prompt').value = item.prompt;
+
+                // 显示耗时
+                const timeBadge = document.getElementById('execution-time');
+                if (item.duration) {
+                    timeBadge.innerText = formatDuration(item.duration);
+                    timeBadge.style.display = 'block';
+                } else {
+                    timeBadge.style.display = 'none';
+                }
+
+                showToast('已加载历史图片');
+            }
+        }
+
+        function clearHistory() {
+            historyData = [];
+            renderHistory();
+        }
+
+        // --- 复制功能 ---
+        async function copyToClipboard() {
+            if (!generatedBase64) return;
+            try {
+                const response = await fetch(generatedBase64);
+                const blob = await response.blob();
+                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                showToast('✅ 图片已复制到剪贴板');
+            } catch (err) {
+                console.error(err);
+                showToast('❌ 复制失败，请手动下载');
+            }
+        }
+
+        // --- Lightbox 核心逻辑 ---
+        function openLightbox(mode, idx) {
+            const content = document.getElementById('lb-content');
+            document.getElementById('lightbox').style.display = 'block';
+            viewState = { scale: 1, pX: 0, pY: 0, isDragging: false, startX: 0, startY: 0 };
+
+            let htmlContent = '';
+            if (mode === 'single') {
+                const src = document.getElementById(`preview-${idx}`).src;
+                htmlContent = `<img src="${src}" class="transform-target" id="targetElement">`;
+            } else if (mode === 'compare') {
+                if (!generatedBase64) return;
+                const activeImgs = [];
+                for (let i = 1; i <= 4; i++) {
+                    const img = document.getElementById(`preview-${i}`);
+                    if (img && img.style.display === 'block') activeImgs.push(img.src);
+                }
+                let refsHtml = activeImgs.map(src => `<img src="${src}" class="stitch-item">`).join('');
+                htmlContent = `
+                <div class="transform-target" id="targetElement" style="display:inline-block;">
+                    <div class="stitch-container">
+                        ${refsHtml}
+                        ${refsHtml ? '<div class="stitch-separator">➜</div>' : ''}
+                        <img src="${generatedBase64}" class="stitch-item stitch-result">
+                    </div>
+                </div>
+            `;
+            }
+            content.innerHTML = htmlContent;
+        }
+
+        function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
+        function updateTransform() {
+            const el = document.getElementById('targetElement');
+            if (el) el.style.transform = `translate(${viewState.pX}px, ${viewState.pY}px) scale(${viewState.scale})`;
+        }
+        function handleZoom(e) {
+            e.preventDefault();
+            viewState.scale += e.deltaY * -0.0015;
+            viewState.scale = Math.min(Math.max(0.1, viewState.scale), 10);
+            updateTransform();
+        }
+        function startDrag(e) {
+            if (e.button !== 0) return;
+            const el = document.getElementById('targetElement');
+            if (!el) return;
+            viewState.isDragging = true;
+            viewState.startX = e.clientX - viewState.pX;
+            viewState.startY = e.clientY - viewState.pY;
+            el.classList.add('dragging');
+            e.preventDefault();
+        }
+        function doDrag(e) {
+            if (!viewState.isDragging) return;
+            e.preventDefault();
+            viewState.pX = e.clientX - viewState.startX;
+            viewState.pY = e.clientY - viewState.startY;
+            updateTransform();
+        }
+        function endDrag(e) {
+            if (!viewState.isDragging) return;
+            viewState.isDragging = false;
+            const el = document.getElementById('targetElement');
+            if (el) el.classList.remove('dragging');
+        }
+
+        // --- 生成逻辑 ---
+        function fileToBase64(file) {
+            return new Promise((res, rej) => {
+                const r = new FileReader();
+                r.readAsDataURL(file);
+                r.onload = () => res({ mimeType: file.type, data: r.result.split(',')[1] });
+                r.onerror = rej;
+            });
+        }
+
+        async function generateImage() {
+            saveConfig();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            const aspect = document.getElementById('aspectRatio').value;
+            const res = document.getElementById('resolution').value;
+            const btn = document.getElementById('generateBtn');
+            const resultArea = document.getElementById('result-area');
+
+            const activeFiles = fileSlots.filter(f => f);
+            if (!apiKey) { showToast('⚠️ 请输入 API Key'); return; }
+            if (!prompt && activeFiles.length === 0) { showToast('⚠️ 请输入提示词'); return; }
+
+            const startTime = Date.now();
+            btn.disabled = true; btn.innerText = '正在绘制中...';
+
+            try {
+                let parts = [];
+                if (prompt) parts.push({ text: prompt });
+                if (activeFiles.length > 0) {
+                    const imgs = await Promise.all(activeFiles.map(fileToBase64));
+                    imgs.forEach(i => parts.push({ inlineData: i }));
+                }
+
+                let conf = {};
+                if (res !== '1K') conf.imageSize = res;
+                if (aspect) conf.aspectRatio = aspect;
+
+                // Updated API URL for wowapi.cc
+                const resp = await fetch(`https://api3.wowapi.cc/v1beta/models/gemini-3-pro-image-preview:generateContent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        contents: [{ parts }],
+                        tools: [{ googleSearch: {} }],
+                        generationConfig: { imageConfig: conf }
+                    })
+                });
+
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || '请求失败');
+
+                const cand = data.candidates?.[0];
+                if (cand?.finishReason === 'SAFETY') throw new Error('内容被拦截 (Safety)');
+
+                let imgPart = null;
+                let txtPart = null;
+
+                if (cand?.content?.parts) {
+                    imgPart = cand.content.parts.find(p => p.inlineData);
+                    if (!imgPart) {
+                        for (const p of cand.content.parts) {
+                            if (p.text) {
+                                const text = p.text;
+                                const markdownMatch = text.match(/!\[.*?\]\((.*?)\)/);
+                                if (markdownMatch && markdownMatch[1]) {
+                                    imgPart = { inlineData: { mimeType: 'image/png', data: null }, url: markdownMatch[1] };
+                                    break;
+                                } else if (text.startsWith('http')) {
+                                    imgPart = { inlineData: { mimeType: 'image/png', data: null }, url: text };
+                                    break;
+                                }
+                                txtPart = p;
+                            }
+                        }
+                    } else {
+                        txtPart = cand.content.parts.find(p => p.text);
+                    }
+                }
+
+                if (imgPart) {
+                    if (imgPart.url) {
+                        generatedBase64 = imgPart.url;
+                    } else {
+                        generatedBase64 = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+                    }
+
+                    document.getElementById('final-image').src = generatedBase64;
+                    const dl = document.getElementById('download-link');
+                    dl.href = generatedBase64;
+                    dl.download = `gemini_${Date.now()}.png`;
+
+                    const compareBtn = document.getElementById('compareBtn');
+                    compareBtn.innerHTML = (activeFiles.length > 0) ? '🔍 全屏拼接对比' : '🔍 全屏查看大图';
+
+                    const duration = Date.now() - startTime;
+                    const timeBadge = document.getElementById('execution-time');
+                    timeBadge.innerText = formatDuration(duration);
+                    timeBadge.style.display = 'block';
+
+                    resultArea.style.display = 'block';
+                    showToast('✨ 图片生成成功');
+
+                    addToHistory(generatedBase64, prompt || "无提示词", duration);
+                } else {
+                    throw new Error('未找到图片数据');
+                }
+
+                const txtOut = document.getElementById('text-output');
+                if (txtPart) {
+                    txtOut.innerText = txtPart.text;
+                    txtOut.style.display = 'block';
+                } else {
+                    txtOut.style.display = 'none';
+                }
+
+            } catch (e) {
+                console.error(e);
+                showToast('❌ 错误: ' + e.message);
+            } finally {
+                btn.disabled = false; btn.innerText = '🚀 保存配置并生成';
+            }
+        }
+    </script>
+
+</body>
+
+</html>
